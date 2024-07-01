@@ -1,45 +1,74 @@
-$zrokexe = "zrok.exe"
-$env:PATH_TO_ZROK="c:\path\to\zrok.exe"
+param (
+    [string]$PathTozrok = "c:\path\to\zrok.exe",
+    [string]$TargetHost = "localhost",
+    [string]$TargetPort = "25565",
+    [string]$GameName   = "Generic_TCP_Server"
+)
+
+$zrokexe = $PathTozrok
+if(!$zrokexe) {
+    $zrokexe=$env:PATH_TO_ZROK
+    if($zrokexe) {
+        Write-Host "PATH_TO_ZROK found in environment. Using $zrokexe"
+    } else {
+        Write-Host "no"
+    }
+}
 
 function Check-ProgramInPath {
     param (
-        [string]$zrokexe
+        [string]$program
     )
 
     # Check if the program exists in any directory in the PATH
     $paths = $env:PATH -split ';'
     foreach ($path in $paths) {
         if($path) {
-            if (Test-Path (Join-Path $path $zrokexe)) {
-                Write-Host "$zrokexe is found in the PATH at: $path."
+            if (Test-Path (Join-Path $path $program)) {
+                Write-Host "$program is found in the PATH at: $path."
                 return $true
             }
         }
     }
     return $false
 }
+$endsInExe = ($zrokexe.ToLower().EndsWith("zrok.exe"))
 
-if (Check-ProgramInPath -program $zrokexe) {
-    # good
-} elseif ($env:PATH_TO_ZROK) {
-    if (Test-Path $env:PATH_TO_ZROK) {
-        Write-Host "$zrokexe is found at the location specified by PATH_TO_ZROK."
+if (($endsInExe -and (Check-ProgramInPath -program $zrokexe))) {
+    "good $zrokexe"
+} elseif ($zrokexe) {
+    if (($endsInExe) -and (Test-Path $zrokexe)) {
+        # $zrokexe directly set
     } else {
-        Write-Host "The environment variable PATH_TO_ZROK is set, but the file does not exist at $env:PATH_TO_ZROK." -ForegroundColor Red
+        Write-Host "The path to zrok is set but does not exist or does not end with zrok.exe" -ForegroundColor Yellow
+        Write-Host "    $zrokexe" -ForegroundColor Yellow
+        $show = $true
         do {
-            if (Test-Path $env:PATH_TO_ZROK -PathType Leaf) {
+            if (Test-Path $zrokexe -PathType Leaf) {
                 break
             } else {
-                Write-Host -ForegroundColor Red "==== zrok.exe not on path and PATH_TO_ZROK incorrect! ===="
-                Write-Host -ForegroundColor Red "(set environment var or update PATH_TO_ZROK in this script to avoid seeing this message)"
-                
-                $env:PATH_TO_ZROK = Read-Host "Enter the correct path"
+                Write-Host -ForegroundColor Red "==== zrok.exe not on path and PathTozrok param was not set or was incorrect! ===="
+                if($show)
+                {
+                    Write-Host -ForegroundColor Red "     to avoid seeing this message in the future: "
+                    Write-Host -ForegroundColor Red "     - pass the correct value to the PathTozrok param"
+                    Write-Host -ForegroundColor Red "     - set the PATH_TO_ZROK environment variable"
+                    Write-Host -ForegroundColor Red "     - hardcode it in this script"
+                    Write-Host ""
+                    $show = $false
+                }
+
+                $zrokexeInput = Read-Host "Enter the correct path"
+                if ($zrokexeInput) {
+                    $zrokexe = $zrokexeInput
+                }
             }
         } while ($true)
     }
 } else {
-    Write-Host "ERROR: $zrokexe is not found in the PATH and the environment variable $envVar is not set." -ForegroundColor Red
+    Write-Host "ERROR: $zrokexe does not seem to point to zrok.exe." -ForegroundColor Red
 }
 
 Write-Host "Using zrok.exe at: " -NoNewline
-Write-Host "$path" -ForegroundColor Green
+Write-Host "$zrokexe" -ForegroundColor Green
+
